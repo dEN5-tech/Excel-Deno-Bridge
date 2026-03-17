@@ -1,0 +1,32 @@
+Attribute VB_Name = "DenoBridge"
+' Generated: {{GEN_DATE}}
+Option Explicit
+
+#If Win64 Then
+    Private Declare PtrSafe Function execute_js_raw Lib "{{DLL_PATH}}" Alias "execute_js" (ByVal codePtr As LongPtr) As LongPtr
+    Private Declare PtrSafe Sub free_rust_bstr Lib "{{DLL_PATH}}" Alias "free_bstr" (ByVal bstrPtr As LongPtr)
+    Private Declare PtrSafe Function SysAllocString Lib "oleaut32.dll" (ByVal pOleChar As LongPtr) As String
+#Else
+    Private Declare Function execute_js_raw Lib "{{DLL_PATH}}" Alias "execute_js" (ByVal codePtr As Long) As Long
+    Private Declare Sub free_rust_bstr Lib "{{DLL_PATH}}" Alias "free_bstr" (ByVal bstrPtr As Long)
+    Private Declare Function SysAllocString Lib "oleaut32.dll" (ByVal pOleChar As Long) As String
+#End If
+
+Public Function JS_EVAL(ByVal jsCode As String) As String
+    Dim resPtr As LongPtr
+    Dim capturedString As String
+
+    resPtr = execute_js_raw(StrPtr(jsCode))
+
+    If resPtr <> 0 Then
+        capturedString = SysAllocString(resPtr)
+        free_rust_bstr resPtr
+        JS_EVAL = capturedString
+    Else
+        JS_EVAL = "Error: NULL from Rust"
+    End If
+End Function
+
+Public Sub TestDeno()
+    MsgBox JS_EVAL("`Deno version: ${Deno.version.v8}. Time: ${new Date().toLocaleTimeString()}`")
+End Sub

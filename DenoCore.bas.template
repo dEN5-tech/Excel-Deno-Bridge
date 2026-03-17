@@ -1,0 +1,89 @@
+Attribute VB_Name = "DenoCore"
+Option Explicit
+
+' Generated: {{GEN_DATE}}
+' API для динамической загрузки DLL и чтения UTF-16 по указателю
+#If Win64 Then
+    Private Declare PtrSafe Function LoadLibraryW Lib "kernel32" (ByVal lpLibFileName As LongPtr) As LongPtr
+    Private Declare PtrSafe Sub CopyMemory Lib "kernel32" Alias "RtlMoveMemory" (ByRef Destination As Any, ByVal Source As LongPtr, ByVal Length As LongPtr)
+    Private Declare PtrSafe Function lstrlenW Lib "kernel32" (ByVal lpString As LongPtr) As Long
+
+    Private Declare PtrSafe Function execute_js_raw Lib "excel_deno_bridge.dll" Alias "execute_js" (ByVal p As LongPtr) As LongPtr
+    Private Declare PtrSafe Sub free_rust_bstr Lib "excel_deno_bridge.dll" Alias "free_bstr" (ByVal p As LongPtr)
+    Private Declare PtrSafe Sub start_native_heartbeat Lib "excel_deno_bridge.dll" (ByVal ms As Long)
+    Private Declare PtrSafe Sub stop_native_heartbeat Lib "excel_deno_bridge.dll" ()
+#End If
+
+Private libHandle As LongPtr
+Private isPathSet As Boolean
+
+Public Sub InitBridge()
+    If libHandle = 0 Then
+        Dim dllPath As String
+        dllPath = ThisWorkbook.Path & "\excel_deno_bridge.dll"
+
+        libHandle = LoadLibraryW(StrPtr(dllPath))
+
+        If libHandle = 0 Then
+            MsgBox "Critical error: Unable to load DLL from " & dllPath, vbCritical
+        Else
+            start_native_heartbeat 100
+        End If
+    End If
+End Sub
+
+Private Sub EnsureWorkbookPath()
+    If libHandle = 0 Or isPathSet Then Exit Sub
+
+    Dim escapedPath As String
+    escapedPath = Replace(ThisWorkbook.Path, "\", "\\")
+
+    Dim initPtr As LongPtr
+    initPtr = execute_js_raw(StrPtr("__set_workbook_dir('" & escapedPath & "')"))
+    If initPtr <> 0 Then
+        free_rust_bstr initPtr
+        isPathSet = True
+    End If
+End Sub
+
+Public Function Eval(ByVal code As String) As String
+    If libHandle = 0 Then InitBridge
+    EnsureWorkbookPath
+    DoEvents
+
+    If libHandle = 0 Then
+        Eval = "Error: DLL not loaded"
+        Exit Function
+    End If
+
+    Dim resPtr As LongPtr
+    resPtr = execute_js_raw(StrPtr(code))
+    If resPtr <> 0 Then
+        Eval = PtrToStrW(resPtr)
+        free_rust_bstr resPtr
+    Else
+        Eval = "Error: Null pointer from Rust"
+    End If
+
+    DoEvents
+End Function
+
+Public Sub ShutdownBridge()
+    On Error Resume Next
+    stop_native_heartbeat
+End Sub
+
+Private Function PtrToStrW(ByVal p As LongPtr) As String
+    Dim lengthBytes As Long
+    lengthBytes = lstrlenW(p) * 2
+
+    If lengthBytes <= 0 Then
+        PtrToStrW = ""
+        Exit Function
+    End If
+
+    Dim buf() As Byte
+    ReDim buf(0 To lengthBytes - 1)
+    CopyMemory buf(0), p, lengthBytes
+    PtrToStrW = StrConv(buf, vbUnicode)
+End Function

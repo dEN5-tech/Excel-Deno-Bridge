@@ -1,0 +1,7 @@
+LIBRARY excel_deno_bridge
+EXPORTS
+    execute_js
+    free_bstr
+    set_workbook_path
+    start_native_heartbeat
+    stop_native_heartbeat

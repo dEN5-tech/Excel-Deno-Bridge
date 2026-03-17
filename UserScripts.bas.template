@@ -1,0 +1,17 @@
+Attribute VB_Name = "UserScripts"
+Option Explicit
+
+' Generated: {{GEN_DATE}}
+
+' Короткий алиас для удобства
+Public Function JS(ByVal code As String) As String
+    JS = DenoCore.Eval(code)
+End Function
+
+' Твоя точка входа
+Public Sub Main()
+    Dim script As String
+    script = "const a = 10; const b = 20; `Результат: ${a + b}`"
+
+    MsgBox JS(script)
+End Sub
