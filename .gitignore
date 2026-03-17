@@ -1,0 +1,13 @@
+/target
+
+# Rust/Cargo
+Cargo.lock
+
+# Build artifacts / local bundles
+/dist/*.dll
+/dist/*.xlsm
+
+# Editor/OS
+.DS_Store
+Thumbs.db
+.vscode/
