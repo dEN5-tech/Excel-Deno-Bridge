@@ -1,5 +1,7 @@
 # 🚀 Excel Deno Bridge
 
+![Excel Deno Bridge Banner](./banner.png)
+
 **Excel Deno Bridge** — это сверхмощная надстройка для Microsoft Excel, которая заменяет устаревший VBA на современный **JavaScript (V8/Deno)**.
 
 Система построена на "святой троице" технологий:
