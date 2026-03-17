@@ -1,0 +1,46 @@
+name: Build XLSM Bundle
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  build-xlsm:
+    # XLSM assembly uses Excel COM automation, so this job must run
+    # on a self-hosted Windows runner with Microsoft Excel installed.
+    runs-on: [self-hosted, windows, excel]
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Rust (stable)
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: x86_64-pc-windows-msvc
+
+      - name: Build release DLL
+        run: cargo build --release --target x86_64-pc-windows-msvc
+
+      - name: Assemble XLSM bundle
+        shell: powershell
+        run: |
+          New-Item -ItemType Directory -Path dist -Force | Out-Null
+          powershell -ExecutionPolicy Bypass -File .\assemble_xlsm.ps1 `
+            -dllPath .\target\x86_64-pc-windows-msvc\release\excel_deno_bridge.dll `
+            -basDir . `
+            -outPath .\dist\my_deno_app.xlsm
+
+      - name: Upload XLSM artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: excel_deno_bridge-xlsm
+          path: |
+            dist/my_deno_app.xlsm
+            dist/excel_deno_bridge.dll
+            dist/logic.js
+            dist/excel.d.ts
+          if-no-files-found: error
